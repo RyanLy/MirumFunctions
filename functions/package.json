@@ -1,0 +1,11 @@
+{
+  "name": "mirum-firebase-functions",
+  "description": "Mirum Cloud Functions for Firebase",
+  "dependencies": {
+    "@sendgrid/mail": "^6.2.1",
+    "firebase-admin": "^5.12.1",
+    "firebase-functions": "^1.0.4",
+    "superagent": "^3.8.3"
+  },
+  "private": true
+}

@@ -1,0 +1,4 @@
+appengine/lib/**
+.runtimeconfig.json
+firebase-debug.log
+node_modules
