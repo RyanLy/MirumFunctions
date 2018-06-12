@@ -10,8 +10,13 @@ if (IS_DEVELOPMENT) {
 }
 
 const TRIVIA_API_URL = 'http://jservice.io/api/category';
-const FOOD_CATEGORY = 49;
-const fromEmail = 'ryan@ryanly.ca';
+const FOOD = 49;
+const THREE_LETTER_WORDS = 105;
+const FOOD_FOR_THOUGHT = 6588;
+const ANIMAL = 21;
+
+const CATEGORIES = [FOOD, THREE_LETTER_WORDS, FOOD_FOR_THOUGHT, ANIMAL];
+const fromEmail = 'mirum@ryanly.ca';
 
 admin.initializeApp(functions.config().firebase);
 const app = admin.app();
@@ -20,6 +25,13 @@ const database = IS_DEVELOPMENT
   : app.database();
 
 sgMail.setApiKey(functions.config().sendgrid_api.key);
+
+function titleCase(str) {
+  return str.toLowerCase()
+    .split(' ')
+    .map(word => word.replace(word[0], word[0].toUpperCase()))
+    .join(' ');
+}
 
 exports.daily_job =
   functions.pubsub.topic('daily-tick').onPublish(() => database.ref('profile').once('value')
@@ -31,27 +43,40 @@ exports.daily_job =
       return request
         .get(TRIVIA_API_URL)
         .query({
-          id: FOOD_CATEGORY,
+          id: CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)],
         })
         .then(({ body }) => {
+          const category = titleCase(body.title);
           const numClues = body.clues.length;
-          const clue = body.clues[Math.floor(Math.random() * numClues)];
-          const { question, answer } = clue;
-          console.info(`Question: ${question}, Answer: ${answer}`);
+          let clue;
+          let question;
+          let answer;
+
+          while (!question || !answer) {
+            clue = body.clues[Math.floor(Math.random() * numClues)];
+            ({ answer, question } = clue);
+          }
+          console.info(`Question (${category}): ${question}, Answer: ${answer}`);
 
           database.ref('question').push(Object.assign(clue, {
             timestamp: admin.database.ServerValue.TIMESTAMP,
+            category,
           }));
 
           const msg = {
             to: emails,
             from: fromEmail,
             subject: '[Mirum] Question of the Day',
-            text: `Here's the question of the day (Category: Food): ${question}? Answer at https://mirum.ryanly.ca!`,
-            html: `<strong>Here's the question of the day (Category: Food):</strong> ${question}?<br><br>` +
+            text: `Here's the question of the day (Category: '${category}'): ${question}? Answer at https://mirum.ryanly.ca!`,
+            html: `<strong>Here's the question of the day (Category: '${category}'):</strong> ${question}?<br><br>` +
                   'Answer at <a href="https://mirum.ryanly.ca">mirum.ryanly.ca</a>!',
           };
-          return sgMail.sendMultiple(msg);
+
+          if (!IS_DEVELOPMENT) {
+            return sgMail.sendMultiple(msg);
+          }
+
+          return null;
         })
         .then(() => {
           console.info(`Emails sent from ${fromEmail} to ${emails.join(', ')}!`);
